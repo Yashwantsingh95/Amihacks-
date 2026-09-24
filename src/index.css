@@ -1,0 +1,250 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap');
+
+:root {
+  --color-dark: #0d1321;
+  --color-dark-panel: #1d2d44;
+  --color-primary: #3e5c76;
+  --color-muted: #748cab;
+  --color-bg: #f0ebd8;
+  --color-surface: #ffffff;
+  --color-urgent: #e63946;
+  --color-warning: #e76f51;
+  --color-success: #2a9d8f;
+
+  --border-dark: 2px solid #0d1321;
+  --border-dark-thick: 3px solid #0d1321;
+  --shadow-neo: 4px 4px 0px #0d1321;
+  --shadow-neo-sm: 2px 2px 0px #0d1321;
+  --shadow-neo-lg: 6px 6px 0px #0d1321;
+  --radius-card: 14px;
+  --radius-btn: 10px;
+  --radius-badge: 6px;
+
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  color: var(--color-dark);
+  background-color: var(--color-bg);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  background-color: var(--color-bg);
+  color: var(--color-dark);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, .font-heading {
+  font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Neo-Brutalist Utility Classes */
+.neo-card {
+  background: var(--color-surface);
+  border: var(--border-dark);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-neo);
+  transition: all 0.15s ease;
+}
+
+.neo-card-cream {
+  background: var(--color-bg);
+  border: var(--border-dark);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-neo);
+}
+
+.neo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 10px 20px;
+  border: var(--border-dark);
+  border-radius: var(--radius-btn);
+  cursor: pointer;
+  text-decoration: none;
+  background: var(--color-primary);
+  color: #ffffff;
+  box-shadow: var(--shadow-neo-sm);
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
+}
+
+.neo-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--shadow-neo);
+}
+
+.neo-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0px #0d1321;
+}
+
+.neo-btn-dark {
+  background: var(--color-dark);
+  color: #ffffff;
+}
+
+.neo-btn-outline {
+  background: var(--color-surface);
+  color: var(--color-dark);
+}
+
+.neo-btn-cream {
+  background: var(--color-bg);
+  color: var(--color-dark);
+}
+
+.neo-btn-danger {
+  background: var(--color-urgent);
+  color: #ffffff;
+}
+
+.neo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-badge);
+  border: var(--border-dark);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.neo-badge-live {
+  background: var(--color-urgent);
+  color: #ffffff;
+}
+
+.neo-badge-matched {
+  background: #d8f3dc;
+  color: #1b4332;
+}
+
+.neo-badge-warning {
+  background: #ffedd8;
+  color: #9c4221;
+}
+
+.neo-badge-dark {
+  background: var(--color-dark);
+  color: #ffffff;
+}
+
+.neo-input {
+  width: 100%;
+  padding: 12px 14px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border: var(--border-dark);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--color-dark);
+  outline: none;
+  box-shadow: inset 1px 1px 0px rgba(13, 19, 33, 0.1);
+  transition: box-shadow 0.15s ease;
+}
+
+.neo-input:focus {
+  box-shadow: var(--shadow-neo-sm);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-muted);
+  border-radius: 4px;
+  border: 1px solid var(--color-dark);
+}
+
+/* Pulsing badge animation */
+@keyframes pulse-dot {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.8; }
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: white;
+  display: inline-block;
+  animation: pulse-dot 1.5s infinite;
+}
+
+/* Route dash animation */
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -40;
+  }
+}
+
+.anim-route-line {
+  stroke-dasharray: 8 6;
+  animation: dash-flow 1.8s linear infinite;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Responsive Media Queries */
+@media (max-width: 900px) {
+  .desktop-nav {
+    display: none !important;
+  }
+  
+  .mobile-header {
+    display: flex !important;
+  }
+
+  .donor-sidebar {
+    position: fixed !important;
+    top: 0;
+    bottom: 0;
+    left: -280px;
+    height: 100vh;
+    z-index: 1000 !important;
+    transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  .donor-sidebar.open {
+    left: 0 !important;
+  }
+
+  .mobile-close-btn {
+    display: block !important;
+  }
+
+  .page-container {
+    padding: 20px 16px !important;
+  }
+}
+
