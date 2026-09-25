@@ -18,6 +18,7 @@ import {
   MapPin
 } from 'lucide-react';
 import { api, getCurrentUser } from '../../services/api';
+import { InstallAppButton } from '../ui/PWAInstallBanner';
 
 export default function Sidebar({ activeRoute, onNavigate, onLogout, mobileOpen, setMobileOpen }) {
   const currentUser = getCurrentUser();
@@ -258,7 +259,7 @@ export default function Sidebar({ activeRoute, onNavigate, onLogout, mobileOpen,
           })}
         </nav>
 
-        {/* Bottom Profile and Sign Out Section */}
+        {/* Bottom Profile, Install App and Sign Out Section */}
         <div style={{
           borderTop: '1px solid rgba(116, 140, 171, 0.25)',
           paddingTop: '16px',
@@ -266,6 +267,8 @@ export default function Sidebar({ activeRoute, onNavigate, onLogout, mobileOpen,
           flexDirection: 'column',
           gap: '8px'
         }}>
+          <InstallAppButton variant="sidebar" />
+
           <button
             onClick={handleSignOut}
             style={{

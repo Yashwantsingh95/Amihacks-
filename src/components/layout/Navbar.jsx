@@ -1,5 +1,5 @@
-import React from 'react';
 import { ShieldAlert, ArrowRight, HeartHandshake, Layers } from 'lucide-react';
+import { InstallAppButton } from '../ui/PWAInstallBanner';
 
 export default function Navbar({ activeRoute, onNavigate }) {
   return (
@@ -78,12 +78,14 @@ export default function Navbar({ activeRoute, onNavigate }) {
         </a>
       </nav>
 
-      {/* Auth Actions */}
+      {/* Auth & Install Actions */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         gap: '12px'
       }}>
+        <InstallAppButton />
+
         <button 
           onClick={() => onNavigate('login')}
           className="neo-btn neo-btn-outline"

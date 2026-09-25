@@ -13,6 +13,7 @@ import ShelterDashboardPage from './pages/ShelterDashboardPage';
 import DriverDashboardPage from './pages/DriverDashboardPage';
 import LiveNetworkMapPage from './pages/LiveNetworkMapPage';
 import Sidebar from './components/layout/Sidebar';
+import PWAInstallBanner from './components/ui/PWAInstallBanner';
 import { initialDonations, initialStats, mockShelters } from './data/mockData';
 import { api, getCurrentUser, getToken } from './services/api';
 import { Menu } from 'lucide-react';
@@ -533,6 +534,9 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Floating Chrome & Mobile Install Banner */}
+      <PWAInstallBanner />
     </div>
   );
 }

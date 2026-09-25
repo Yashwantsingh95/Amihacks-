@@ -97,6 +97,10 @@ RESCUEFLOW has **3 completely separate portals**. When you log in, the app gives
 ### 🎨 4. Neo-Brutalist Visual Design
 * Modern, high-contrast visual design with bold borders, tactile drop shadows, and clean **Space Grotesk** typography that looks great on mobile, tablet, and desktop.
 
+### 📲 5. Direct Chrome Mobile App Install (PWA)
+* Tap the gold **"Install App"** button directly from Chrome on your phone or desktop to install RESCUEFLOW as a standalone mobile application on your Home Screen.
+* Complete with an offline Service Worker cache, custom app icons, fast launch shortcuts, and fullscreen app mode (without browser address bars).
+
 ---
 
 ## 🚀 How to Run the Project (Simple 3-Step Setup)
