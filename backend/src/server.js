@@ -48,6 +48,22 @@ app.use('/api/locations', require('./routes/locationRoutes'));
 app.use('/api/map', require('./routes/mapRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 
+// Serve production static frontend if built
+const path = require('path');
+const fs = require('fs');
+const distPath = path.resolve(__dirname, '../../dist');
+
+if (fs.existsSync(distPath)) {
+  console.log(`[RESCUEFLOW] Serving production client build from: ${distPath}`);
+  app.use(express.static(distPath));
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/api') && !req.path.startsWith('/socket.io')) {
+      return res.sendFile(path.join(distPath, 'index.html'));
+    }
+    next();
+  });
+}
+
 // 404 & Centralized Error Handlers
 app.use(notFound);
 app.use(errorHandler);

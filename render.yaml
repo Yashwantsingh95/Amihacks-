@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: rescueflow
+    env: node
+    plan: free
+    buildCommand: npm install && cd backend && npm install && cd .. && npm run build
+    startCommand: node backend/src/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SEED_DEMO
+        value: "false"

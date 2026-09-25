@@ -1,9 +1,17 @@
 import { io } from 'socket.io-client';
 import { getToken } from './api';
 
-const SOCKET_URL = import.meta.env.VITE_API_URL 
-  ? import.meta.env.VITE_API_URL.replace('/api', '')
-  : 'http://localhost:5001';
+const getSocketUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL.replace('/api', '');
+  }
+  if (typeof window !== 'undefined' && window.location.port !== '5173') {
+    return window.location.origin;
+  }
+  return 'http://localhost:5001';
+};
+
+const SOCKET_URL = getSocketUrl();
 
 let socket = null;
 
