@@ -55,7 +55,7 @@ export default function DonationDetailsPage({ donation, onNavigate }) {
       {/* Back button + Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
         <button
-          onClick={() => onNavigate('donor-dashboard')}
+          onClick={() => onNavigate('/donor/dashboard')}
           className="neo-btn neo-btn-outline"
           style={{ padding: '8px 16px', fontSize: '0.9rem' }}
         >
@@ -73,7 +73,7 @@ export default function DonationDetailsPage({ donation, onNavigate }) {
             <span>Print Manifest</span>
           </button>
           <button
-            onClick={() => onNavigate('donor-tracking')}
+            onClick={() => onNavigate('/donor/tracking')}
             className="neo-btn neo-btn-dark"
             style={{ padding: '8px 18px', fontSize: '0.9rem' }}
           >

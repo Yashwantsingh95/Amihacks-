@@ -13,9 +13,13 @@ import {
   ExternalLink
 } from 'lucide-react';
 import StatCard from '../components/ui/StatCard';
+import NotificationDropdown from '../components/ui/NotificationDropdown';
+import { getCurrentUser } from '../services/api';
 
 export default function DashboardPage({ donations, stats, onNavigate, onSelectDonation }) {
   const activeDonation = donations.find(d => d.id === 'DON-1024') || donations[0];
+  const user = getCurrentUser() || { name: 'ABC Restaurant' };
+  const userInitial = user.name ? user.name.charAt(0).toUpperCase() : 'A';
 
   return (
     <div style={{ padding: '32px 36px', maxWidth: '1400px', margin: '0 auto' }} className="page-container">
@@ -37,7 +41,7 @@ export default function DashboardPage({ donations, stats, onNavigate, onSelectDo
             lineHeight: 1.15
           }}>
             Good evening, <br />
-            ABC Restaurant <span style={{ display: 'inline-block' }}>👋</span>
+            {user.name || 'ABC Restaurant'} <span style={{ display: 'inline-block' }}>👋</span>
           </h1>
           <p style={{
             fontSize: '1rem',
@@ -52,7 +56,7 @@ export default function DashboardPage({ donations, stats, onNavigate, onSelectDo
         {/* Top Right Profile & Quick Action */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <button
-            onClick={() => onNavigate('donor-create')}
+            onClick={() => onNavigate('/donor/create')}
             className="neo-btn neo-btn-dark"
             style={{ padding: '12px 20px', fontSize: '0.95rem' }}
           >
@@ -60,38 +64,12 @@ export default function DashboardPage({ donations, stats, onNavigate, onSelectDo
             <span>Create Donation</span>
           </button>
 
-          {/* Bell Notifications */}
-          <div 
-            style={{
-              width: '44px',
-              height: '44px',
-              borderRadius: '10px',
-              border: 'var(--border-dark)',
-              background: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: 'var(--shadow-neo-sm)',
-              cursor: 'pointer',
-              position: 'relative'
-            }}
-          >
-            <Bell size={20} />
-            <span style={{
-              position: 'absolute',
-              top: '8px',
-              right: '8px',
-              width: '8px',
-              height: '8px',
-              background: '#e63946',
-              borderRadius: '50%',
-              border: '1.5px solid #ffffff'
-            }} />
-          </div>
+          {/* Real Notification Dropdown */}
+          <NotificationDropdown onNavigate={onNavigate} />
 
           {/* User Avatar */}
           <div 
-            onClick={() => onNavigate('donor-profile')}
+            onClick={() => onNavigate('/donor/profile')}
             style={{
               width: '44px',
               height: '44px',
@@ -108,7 +86,7 @@ export default function DashboardPage({ donations, stats, onNavigate, onSelectDo
               cursor: 'pointer'
             }}
           >
-            A
+            {userInitial}
           </div>
         </div>
       </div>
@@ -142,6 +120,59 @@ export default function DashboardPage({ donations, stats, onNavigate, onSelectDo
         />
       </div>
 
+      {/* Live Global Map Radar Quick Access Banner */}
+      <div 
+        onClick={() => onNavigate('/donor/map')}
+        className="neo-card"
+        style={{
+          background: 'linear-gradient(135deg, #1d2d44 0%, #0d1321 100%)',
+          color: '#ffffff',
+          padding: '20px 24px',
+          marginBottom: '32px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '16px',
+          cursor: 'pointer'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '12px',
+            background: 'var(--color-primary)',
+            border: '2px solid rgba(240, 235, 216, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <MapPin size={24} color="#ffffff" />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span className="neo-badge neo-badge-live" style={{ padding: '3px 8px', fontSize: '0.72rem' }}>
+                <span className="pulse-dot" /> LIVE NETWORK RADAR
+              </span>
+            </div>
+            <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '1.25rem', fontWeight: 800 }}>
+              Live Regional Surplus-to-Shelter Network Map
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'rgba(240, 235, 216, 0.8)', marginTop: '2px' }}>
+              Real-time geospatial visibility across nearby partner shelters, available volunteer drivers, and active rescues.
+            </p>
+          </div>
+        </div>
+
+        <button
+          className="neo-btn"
+          style={{ background: '#ffffff', color: '#0d1321', padding: '10px 18px', fontSize: '0.88rem', fontWeight: 800 }}
+        >
+          <span>Open Live Map →</span>
+        </button>
+      </div>
+
       {/* Active Rescues Section (Hero Card on Dashboard) */}
       <div style={{ marginBottom: '40px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
@@ -154,7 +185,7 @@ export default function DashboardPage({ donations, stats, onNavigate, onSelectDo
             Active Rescues
           </h2>
           <span 
-            onClick={() => onNavigate('donor-donations')}
+            onClick={() => onNavigate('/donor/donations')}
             style={{
               fontSize: '0.9rem',
               fontWeight: 700,
@@ -311,7 +342,7 @@ export default function DashboardPage({ donations, stats, onNavigate, onSelectDo
               <button
                 onClick={() => {
                   if (onSelectDonation) onSelectDonation(activeDonation);
-                  onNavigate('donor-tracking');
+                  onNavigate('/donor/tracking');
                 }}
                 className="neo-btn neo-btn-dark"
                 style={{ width: '100%', padding: '12px' }}
@@ -406,7 +437,7 @@ export default function DashboardPage({ donations, stats, onNavigate, onSelectDo
                       <button
                         onClick={() => {
                           if (onSelectDonation) onSelectDonation(d);
-                          onNavigate(`donor-donation-details`);
+                          onNavigate('/donor/donation-details');
                         }}
                         className="neo-btn neo-btn-outline"
                         style={{ padding: '6px 12px', fontSize: '0.8rem' }}
@@ -417,7 +448,7 @@ export default function DashboardPage({ donations, stats, onNavigate, onSelectDo
                         <button
                           onClick={() => {
                             if (onSelectDonation) onSelectDonation(d);
-                            onNavigate('donor-tracking');
+                            onNavigate('/donor/tracking');
                           }}
                           className="neo-btn neo-btn-dark"
                           style={{ padding: '6px 12px', fontSize: '0.8rem' }}

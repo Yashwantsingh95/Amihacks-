@@ -11,12 +11,15 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { weeklyImpactChart } from '../data/mockData';
+import { getCurrentUser } from '../services/api';
 
 export default function ImpactPage({ onNavigate }) {
   const [filterPeriod, setFilterPeriod] = useState('This Month');
   const [activeTab, setActiveTab] = useState('meals'); // 'meals' or 'kg'
 
   const maxMeals = Math.max(...weeklyImpactChart.map(d => d.meals));
+  const activeUser = getCurrentUser();
+  const role = activeUser?.role?.toUpperCase() || 'DONOR';
 
   return (
     <div style={{ padding: '32px 36px', maxWidth: '1200px', margin: '0 auto' }} className="page-container">
@@ -36,10 +39,10 @@ export default function ImpactPage({ onNavigate }) {
             fontWeight: 800,
             color: 'var(--color-dark)'
           }}>
-            Your Impact
+            {role === 'SHELTER' ? 'Shelter Meal Intake & Impact' : role === 'DRIVER' ? 'Volunteer Rescue Mileage & Impact' : 'Your Surplus Food Rescue Impact'}
           </h1>
           <p style={{ color: 'var(--color-muted)', fontSize: '1rem', fontWeight: 500, marginTop: '4px' }}>
-            Tangible social and environmental difference made by ABC Restaurant.
+            Tangible social and environmental difference made by {activeUser?.name || 'Your Organization'}.
           </p>
         </div>
 
@@ -286,11 +289,15 @@ export default function ImpactPage({ onNavigate }) {
           </div>
 
           <button
-            onClick={() => onNavigate('donor-create')}
+            onClick={() => {
+              if (role === 'SHELTER') onNavigate('/shelter/available');
+              else if (role === 'DRIVER') onNavigate('/driver/requests');
+              else onNavigate('/donor/create');
+            }}
             className="neo-btn neo-btn-dark"
             style={{ padding: '10px 20px', fontSize: '0.9rem' }}
           >
-            <span>+ Donate More Surplus</span>
+            <span>{role === 'SHELTER' ? 'View Available Intake →' : role === 'DRIVER' ? 'View Pickup Missions →' : '+ Donate More Surplus'}</span>
             <ArrowRight size={16} />
           </button>
         </div>

@@ -32,6 +32,7 @@ export const mockShelters = [
     capacity: "Capacity Available (80+ meals)",
     needLevel: "High Need",
     address: "Plot 14, Karol Bagh, New Delhi",
+    coordinates: [77.1906, 28.6517],
     contactPerson: "Sister Mary",
     foodPreferences: "Cooked vegetarian / Non-perishable"
   },
@@ -45,6 +46,7 @@ export const mockShelters = [
     capacity: "Medium Capacity (45 meals)",
     needLevel: "Medium Need",
     address: "22 Pahar Ganj, New Delhi",
+    coordinates: [77.2140, 28.6430],
     contactPerson: "Harpreet Singh",
     foodPreferences: "All edible surplus"
   },
@@ -58,6 +60,7 @@ export const mockShelters = [
     capacity: "High Capacity (120 meals)",
     needLevel: "Critical Need",
     address: "Civil Lines, New Delhi",
+    coordinates: [77.2270, 28.6814],
     contactPerson: "Dr. Anjali Verma",
     foodPreferences: "Freshly cooked warm meals"
   }
@@ -72,6 +75,7 @@ export const mockDriver = {
   vehicle: "Hero Electric Eco-Van (DL-01-EV-4289)",
   avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&h=120&q=80",
   statusText: "On the way to Shelter A",
+  coordinates: [77.2050, 28.6420],
   eta: "8 min away",
   distanceRemaining: "2.4 km"
 };
@@ -83,6 +87,7 @@ export const initialDonations = [
     quantity: 40,
     unit: "meals",
     pickupLocation: "ABC Restaurant, Delhi",
+    pickupCoordinates: [77.2197, 28.6328],
     safeUntil: "7:30 PM",
     remainingTime: "1h 42m remaining",
     category: "Vegetarian",
@@ -101,6 +106,7 @@ export const initialDonations = [
     quantity: 30,
     unit: "meals",
     pickupLocation: "ABC Restaurant, Delhi",
+    pickupCoordinates: [77.2197, 28.6328],
     safeUntil: "8:00 PM",
     remainingTime: "2h 15m remaining",
     category: "Vegetarian",
@@ -113,6 +119,7 @@ export const initialDonations = [
       fullName: "Amit Kumar",
       rating: "4.88",
       phone: "+91 98123 77890",
+      coordinates: [77.2100, 28.6380],
       eta: "15 min away",
       distanceRemaining: "3.8 km",
       avatar: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=120&h=120&q=80"

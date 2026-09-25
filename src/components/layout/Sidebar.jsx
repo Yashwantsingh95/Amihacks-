@@ -5,27 +5,80 @@ import {
   PlusCircle, 
   Navigation, 
   BarChart3, 
-  Settings, 
   User, 
   HeartHandshake,
   LogOut,
-  Menu,
-  X
+  X,
+  Building2,
+  CheckCircle2,
+  Truck,
+  Clock,
+  Layers,
+  ShieldAlert,
+  MapPin
 } from 'lucide-react';
+import { api, getCurrentUser } from '../../services/api';
 
-export default function Sidebar({ activeRoute, onNavigate, mobileOpen, setMobileOpen }) {
-  const navItems = [
-    { id: 'donor-dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'donor-donations', label: 'Donations', icon: Package },
-    { id: 'donor-create', label: 'Create Donation', icon: PlusCircle },
-    { id: 'donor-tracking', label: 'Tracking', icon: Navigation },
-    { id: 'donor-impact', label: 'Impact', icon: BarChart3 }
+export default function Sidebar({ activeRoute, onNavigate, onLogout, mobileOpen, setMobileOpen }) {
+  const currentUser = getCurrentUser();
+  const userRole = currentUser?.role?.toUpperCase() || 'DONOR';
+
+  // Role-specific navigation items (Strict separation - No crossover)
+  const donorNavItems = [
+    { id: '/donor/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: '/donor/map', label: 'Live Network Map', icon: MapPin },
+    { id: '/donor/create', label: 'Create Donation', icon: PlusCircle },
+    { id: '/donor/donations', label: 'My Donations', icon: Package },
+    { id: '/donor/tracking', label: 'Live Tracking', icon: Navigation },
+    { id: '/donor/impact', label: 'Impact', icon: BarChart3 },
+    { id: '/donor/profile', label: 'Profile', icon: User }
   ];
 
-  const bottomItems = [
-    { id: 'donor-settings', label: 'Settings', icon: Settings },
-    { id: 'donor-profile', label: 'Profile', icon: User }
+  const shelterNavItems = [
+    { id: '/shelter/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: '/shelter/map', label: 'Live Network Map', icon: MapPin },
+    { id: '/shelter/available', label: 'Available Donations', icon: Package },
+    { id: '/shelter/accepted', label: 'Accepted Donations', icon: CheckCircle2 },
+    { id: '/shelter/capacity', label: 'Capacity & Need', icon: Layers },
+    { id: '/shelter/tracking', label: 'Live Tracking', icon: Navigation },
+    { id: '/shelter/impact', label: 'Shelter Impact', icon: BarChart3 },
+    { id: '/shelter/profile', label: 'Profile', icon: User }
   ];
+
+  const driverNavItems = [
+    { id: '/driver/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: '/driver/map', label: 'Live Logistics Map', icon: MapPin },
+    { id: '/driver/requests', label: 'Pickup Requests', icon: Package },
+    { id: '/driver/rescue', label: 'Active Rescue', icon: Truck },
+    { id: '/driver/route', label: 'Live Route & GPS', icon: Navigation },
+    { id: '/driver/history', label: 'History', icon: Clock },
+    { id: '/driver/profile', label: 'Profile', icon: User }
+  ];
+
+  // Select ONLY current role items
+  let navItems = donorNavItems;
+  let portalBadge = 'DONOR PORTAL';
+  let portalBadgeColor = '#2a9d8f';
+
+  if (userRole === 'SHELTER') {
+    navItems = shelterNavItems;
+    portalBadge = 'SHELTER PORTAL';
+    portalBadgeColor = '#e76f51';
+  } else if (userRole === 'DRIVER') {
+    navItems = driverNavItems;
+    portalBadge = 'DRIVER PORTAL';
+    portalBadgeColor = '#3a86ff';
+  }
+
+  const handleSignOut = () => {
+    if (onLogout) {
+      onLogout();
+    } else {
+      api.auth.logout();
+      onNavigate('/login');
+    }
+    setMobileOpen(false);
+  };
 
   return (
     <>
@@ -46,7 +99,7 @@ export default function Sidebar({ activeRoute, onNavigate, mobileOpen, setMobile
       {/* Sidebar Container */}
       <aside 
         style={{
-          width: '260px',
+          width: '265px',
           background: 'var(--color-dark)',
           color: '#ffffff',
           display: 'flex',
@@ -66,12 +119,12 @@ export default function Sidebar({ activeRoute, onNavigate, mobileOpen, setMobile
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 8px 24px 8px',
+          padding: '0 8px 16px 8px',
           borderBottom: '1px solid rgba(116, 140, 171, 0.25)',
-          marginBottom: '20px'
+          marginBottom: '16px'
         }}>
           <div 
-            onClick={() => onNavigate('landing')}
+            onClick={() => onNavigate(navItems[0].id)}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -92,15 +145,19 @@ export default function Sidebar({ activeRoute, onNavigate, mobileOpen, setMobile
             }}>
               <HeartHandshake size={20} strokeWidth={2.5} />
             </div>
-            <span style={{
-              fontFamily: "'Space Grotesk', sans-serif",
-              fontSize: '1.25rem',
-              fontWeight: 800,
-              letterSpacing: '-0.02em',
-              color: 'var(--color-bg)'
-            }}>
-              RESCUEFLOW
-            </span>
+            <div>
+              <span style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: '1.2rem',
+                fontWeight: 800,
+                letterSpacing: '-0.02em',
+                color: 'var(--color-bg)',
+                display: 'block',
+                lineHeight: 1.1
+              }}>
+                RESCUEFLOW
+              </span>
+            </div>
           </div>
 
           {/* Close for mobile */}
@@ -119,13 +176,55 @@ export default function Sidebar({ activeRoute, onNavigate, mobileOpen, setMobile
           </button>
         </div>
 
-        {/* Main Navigation */}
+        {/* Role Portal Badge */}
+        <div style={{
+          background: 'rgba(29, 45, 68, 0.85)',
+          border: '1px solid rgba(116, 140, 171, 0.3)',
+          borderRadius: '8px',
+          padding: '8px 12px',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              background: portalBadgeColor,
+              display: 'inline-block'
+            }} />
+            <span style={{
+              fontSize: '0.75rem',
+              fontWeight: 800,
+              letterSpacing: '0.05em',
+              color: '#ffffff',
+              fontFamily: "'Space Grotesk', sans-serif"
+            }}>
+              {portalBadge}
+            </span>
+          </div>
+          <span style={{
+            fontSize: '0.7rem',
+            color: 'var(--color-muted)',
+            fontWeight: 600,
+            textTransform: 'uppercase'
+          }}>
+            {currentUser?.name ? currentUser.name.split(' ')[0] : 'Verified'}
+          </span>
+        </div>
+
+        {/* Main Navigation (Strictly Role-Aware) */}
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
           {navItems.map((item) => {
             const Icon = item.icon;
+            // Check active route match
             const isActive = activeRoute === item.id || 
-              (item.id === 'donor-tracking' && (activeRoute.startsWith('donor-tracking') || activeRoute === 'donor-tracking')) ||
-              (item.id === 'donor-donations' && activeRoute.startsWith('donor-donation-details'));
+              (item.id.endsWith('dashboard') && (activeRoute === item.id || activeRoute.endsWith('dashboard'))) ||
+              (item.id.endsWith('donations') && (activeRoute === item.id || activeRoute.includes('donation-details'))) ||
+              (item.id.endsWith('tracking') && activeRoute.includes('tracking')) ||
+              (item.id.endsWith('route') && activeRoute.includes('route'));
 
             return (
               <button
@@ -145,95 +244,46 @@ export default function Sidebar({ activeRoute, onNavigate, mobileOpen, setMobile
                   background: isActive ? 'var(--color-primary)' : 'transparent',
                   color: isActive ? '#ffffff' : 'var(--color-muted)',
                   fontFamily: 'inherit',
-                  fontSize: '0.95rem',
-                  fontWeight: isActive ? 700 : 500,
+                  fontSize: '0.92rem',
+                  fontWeight: isActive ? 800 : 500,
                   cursor: 'pointer',
                   textAlign: 'left',
-                  boxShadow: isActive ? 'var(--shadow-neo-sm)' : 'none',
                   transition: 'all 0.15s ease'
                 }}
-                onMouseEnter={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.color = '#ffffff';
-                    e.currentTarget.style.background = 'rgba(62, 92, 118, 0.2)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.color = 'var(--color-muted)';
-                    e.currentTarget.style.background = 'transparent';
-                  }
-                }}
               >
-                <Icon size={19} strokeWidth={isActive ? 2.5 : 2} />
+                <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
                 <span>{item.label}</span>
               </button>
             );
           })}
         </nav>
 
-        {/* Divider */}
+        {/* Bottom Profile and Sign Out Section */}
         <div style={{
-          height: '1px',
-          background: 'rgba(116, 140, 171, 0.25)',
-          margin: '20px 8px'
-        }} />
-
-        {/* Bottom Navigation */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {bottomItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeRoute === item.id;
-
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  onNavigate(item.id);
-                  setMobileOpen(false);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: '10px',
-                  border: isActive ? '2px solid rgba(240, 235, 216, 0.4)' : '2px solid transparent',
-                  background: isActive ? 'var(--color-primary)' : 'transparent',
-                  color: isActive ? '#ffffff' : 'var(--color-muted)',
-                  fontFamily: 'inherit',
-                  fontSize: '0.9rem',
-                  fontWeight: isActive ? 700 : 500,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-
+          borderTop: '1px solid rgba(116, 140, 171, 0.25)',
+          paddingTop: '16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px'
+        }}>
           <button
-            onClick={() => onNavigate('landing')}
+            onClick={handleSignOut}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
               width: '100%',
               padding: '10px 14px',
-              marginTop: '4px',
               borderRadius: '10px',
               border: 'none',
-              background: 'transparent',
+              background: 'rgba(239, 68, 68, 0.12)',
               color: '#ef4444',
               fontFamily: 'inherit',
               fontSize: '0.9rem',
-              fontWeight: 600,
+              fontWeight: 700,
               cursor: 'pointer',
-              textAlign: 'left'
+              textAlign: 'left',
+              transition: 'background 0.15s ease'
             }}
           >
             <LogOut size={18} />

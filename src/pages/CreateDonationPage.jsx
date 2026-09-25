@@ -1,48 +1,66 @@
 import React, { useState } from 'react';
-import { Clock, MapPin, ArrowRight, Sparkles, Check, AlertCircle, UtensilsCrossed } from 'lucide-react';
+import { Clock, MapPin, ArrowRight, Crosshair, Loader2, Check } from 'lucide-react';
+import { requestCurrentPosition } from '../services/locationService';
 
 export default function CreateDonationPage({ onNavigate, onDonationCreated }) {
   const [foodType, setFoodType] = useState('Veg Biryani');
   const [quantity, setQuantity] = useState('40');
   const [unit, setUnit] = useState('Meals');
-  const [pickupLocation, setPickupLocation] = useState('ABC Restaurant, Delhi');
-  const [safeUntil, setSafeUntil] = useState('7:30 PM');
+  const [pickupLocation, setPickupLocation] = useState('ABC Restaurant, Connaught Place, New Delhi');
+  const [coords, setCoords] = useState([77.2197, 28.6328]);
+  const [safeUntilHours, setSafeUntilHours] = useState('2.5');
   const [category, setCategory] = useState('Vegetarian');
   const [notes, setNotes] = useState('Freshly prepared for banquet, packed in insulated warm containers.');
+  const [loading, setLoading] = useState(false);
+  const [locLoading, setLocLoading] = useState(false);
+  const [locStatus, setLocStatus] = useState('');
 
-  const handleSubmit = (e) => {
+  // Detect real device location
+  const handleDetectGPS = async () => {
+    setLocLoading(true);
+    setLocStatus('Detecting device GPS...');
+    try {
+      const pos = await requestCurrentPosition();
+      setCoords([pos.longitude, pos.latitude]);
+      setLocStatus(`GPS acquired (${pos.latitude.toFixed(4)}, ${pos.longitude.toFixed(4)})`);
+      setPickupLocation(`GPS Location: ${pos.latitude.toFixed(4)}°N, ${pos.longitude.toFixed(4)}°E`);
+    } catch (err) {
+      setLocStatus(`Notice: ${err.message}`);
+    } finally {
+      setLocLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const newDonation = {
-      id: `DON-${Math.floor(1000 + Math.random() * 9000)}`,
+    setLoading(true);
+
+    const futureTime = new Date(Date.now() + Number(safeUntilHours) * 60 * 60 * 1000);
+
+    const donationData = {
       foodType,
       quantity: Number(quantity) || 40,
       unit,
       pickupLocation,
-      safeUntil,
-      remainingTime: '2h 15m remaining',
+      coords,
+      safeUntil: futureTime.toISOString(),
+      remainingTime: `${safeUntilHours}h remaining`,
       category,
-      status: 'MATCHED',
-      statusLabel: 'MATCHED',
-      donor: 'ABC Restaurant',
-      notes,
-      postedAt: 'Just now',
-      image: category === 'Vegetarian' 
-        ? 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=400&q=80'
-        : 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=400&q=80'
+      notes
     };
 
     if (onDonationCreated) {
-      onDonationCreated(newDonation);
+      await onDonationCreated(donationData);
     }
-    // Navigate directly to the matching screen
-    onNavigate('donor-matching');
+    setLoading(false);
+    onNavigate('/donor/matching');
   };
 
-  // Quick preset helpers
-  const handleQuickPreset = (type, qty, cat) => {
+  const handleQuickPreset = (type, qty, cat, hrs) => {
     setFoodType(type);
     setQuantity(qty);
     setCategory(cat);
+    setSafeUntilHours(hrs);
   };
 
   return (
@@ -56,10 +74,10 @@ export default function CreateDonationPage({ onNavigate, onDonationCreated }) {
           color: 'var(--color-dark)',
           marginBottom: '6px'
         }}>
-          Create a Donation
+          Create a Real Donation
         </h1>
         <p style={{ color: 'var(--color-muted)', fontSize: '1rem', fontWeight: 500 }}>
-          Post surplus food in under one minute. Speed saves edible meals.
+          Post surplus food into MongoDB with real GPS coordinates and real-time shelter matching.
         </p>
       </div>
 
@@ -75,32 +93,32 @@ export default function CreateDonationPage({ onNavigate, onDonationCreated }) {
           {/* Quick presets strip */}
           <div style={{ marginBottom: '20px' }}>
             <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-muted)', display: 'block', marginBottom: '8px' }}>
-              ⚡ Quick 1-Click Presets:
+              ⚡ 1-Click Rescue Presets:
             </span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               <button
                 type="button"
-                onClick={() => handleQuickPreset('Veg Biryani', '40', 'Vegetarian')}
+                onClick={() => handleQuickPreset('Veg Biryani', '40', 'Vegetarian', '2.5')}
                 className="neo-btn neo-btn-cream"
                 style={{ padding: '4px 10px', fontSize: '0.8rem' }}
               >
-                🍛 40 Meals Biryani
+                🍛 40 Meals Biryani (2.5h)
               </button>
               <button
                 type="button"
-                onClick={() => handleQuickPreset('Paneer & Rotis', '30', 'Vegetarian')}
+                onClick={() => handleQuickPreset('Paneer Butter Masala', '30', 'Vegetarian', '2')}
                 className="neo-btn neo-btn-cream"
                 style={{ padding: '4px 10px', fontSize: '0.8rem' }}
               >
-                🫓 30 Meals Paneer
+                🫓 30 Meals Paneer (2h)
               </button>
               <button
                 type="button"
-                onClick={() => handleQuickPreset('Fresh Fruit Crates', '25', 'Other')}
+                onClick={() => handleQuickPreset('Produce & Bakery Crates', '60', 'Other', '4')}
                 className="neo-btn neo-btn-cream"
                 style={{ padding: '4px 10px', fontSize: '0.8rem' }}
               >
-                🍎 25 kg Produce
+                🍎 60 kg Fresh Produce (4h)
               </button>
             </div>
           </div>
@@ -156,50 +174,87 @@ export default function CreateDonationPage({ onNavigate, onDonationCreated }) {
               </div>
             </div>
 
-            {/* Pickup Location */}
+            {/* Pickup Location with Real GPS detector */}
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, marginBottom: '6px' }}>
-                Pickup Location
-              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 800 }}>
+                  Pickup Address
+                </label>
+                <button
+                  type="button"
+                  onClick={handleDetectGPS}
+                  disabled={locLoading}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--color-primary)',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Crosshair size={13} />
+                  <span>Use Device GPS</span>
+                </button>
+              </div>
+
               <div style={{ position: 'relative' }}>
                 <input
                   type="text"
                   required
                   className="neo-input"
-                  placeholder="ABC Restaurant, Delhi"
+                  placeholder="ABC Restaurant, Connaught Place, New Delhi"
                   value={pickupLocation}
                   onChange={(e) => setPickupLocation(e.target.value)}
                   style={{ paddingLeft: '38px' }}
                 />
                 <MapPin size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-muted)' }} />
               </div>
+              {locStatus && (
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, display: 'block', marginTop: '4px' }}>
+                  {locStatus}
+                </span>
+              )}
             </div>
 
-            {/* Safe Until / Expiry */}
+            {/* Safe Until (Hours from now) */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                 <label style={{ fontSize: '0.85rem', fontWeight: 800 }}>
-                  Safe Until / Expiry Window
+                  Safe Until / Expiry Duration
                 </label>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#e63946' }}>
                   ⚡ Perishable Window
                 </span>
               </div>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type="text"
-                  required
-                  className="neo-input"
-                  placeholder="7:30 PM (or +2 hours)"
-                  value={safeUntil}
-                  onChange={(e) => setSafeUntil(e.target.value)}
-                  style={{ paddingLeft: '38px' }}
-                />
-                <Clock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-muted)' }} />
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {['1.5', '2.5', '3.5', '5.0'].map((hrs) => (
+                  <button
+                    key={hrs}
+                    type="button"
+                    onClick={() => setSafeUntilHours(hrs)}
+                    style={{
+                      flex: 1,
+                      padding: '8px',
+                      borderRadius: '8px',
+                      border: 'var(--border-dark)',
+                      background: safeUntilHours === hrs ? 'var(--color-dark)' : '#ffffff',
+                      color: safeUntilHours === hrs ? '#ffffff' : 'var(--color-dark)',
+                      fontWeight: 800,
+                      fontSize: '0.85rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    +{hrs}h
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Food Category Pills (Matches Screenshot) */}
+            {/* Food Category Pills */}
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, marginBottom: '8px' }}>
                 Food Category
@@ -222,8 +277,7 @@ export default function CreateDonationPage({ onNavigate, onDonationCreated }) {
                         fontSize: '0.85rem',
                         fontWeight: 700,
                         cursor: 'pointer',
-                        boxShadow: isSelected ? 'var(--shadow-neo-sm)' : 'none',
-                        transition: 'all 0.15s ease'
+                        boxShadow: isSelected ? 'var(--shadow-neo-sm)' : 'none'
                       }}
                     >
                       {cat}
@@ -236,21 +290,20 @@ export default function CreateDonationPage({ onNavigate, onDonationCreated }) {
             {/* Additional Notes */}
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, marginBottom: '6px' }}>
-                Additional Notes
+                Handling Instructions
               </label>
               <textarea
-                rows={3}
+                rows={2}
                 className="neo-input"
-                placeholder="Any special handling instructions, allergens, or pickup gate..."
+                placeholder="Insulation details, dispatch gate, allergies..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                style={{ resize: 'vertical' }}
               />
             </div>
           </form>
         </div>
 
-        {/* Right Tactile Card (Matches Screenshot illustration & quote) */}
+        {/* Right Tactile Card */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div 
             className="neo-card" 
@@ -267,13 +320,9 @@ export default function CreateDonationPage({ onNavigate, onDonationCreated }) {
             {/* Cloche Illustration SVG */}
             <div style={{ width: '90px', height: '80px', marginBottom: '20px' }}>
               <svg viewBox="0 0 100 80" style={{ width: '100%', height: '100%' }}>
-                {/* Cloche knob */}
                 <circle cx="50" cy="18" r="6" fill="#0d1321" />
-                {/* Cloche dome */}
                 <path d="M 15 54 C 15 26, 85 26, 85 54 Z" fill="#3e5c76" stroke="#0d1321" strokeWidth="2.5" />
-                {/* Highlight */}
                 <path d="M 28 46 C 30 34, 45 30, 52 30" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
-                {/* Cloche base plate */}
                 <rect x="10" y="54" width="80" height="8" rx="3" fill="#1d2d44" stroke="#0d1321" strokeWidth="2.5" />
               </svg>
             </div>
@@ -297,12 +346,12 @@ export default function CreateDonationPage({ onNavigate, onDonationCreated }) {
               maxWidth: '300px',
               marginBottom: '28px'
             }}>
-              Once submitted, our real-time matching system will immediately query available shelters within a 5 km radius.
+              Real-time geospatial matching immediately queries verified shelters within range via MongoDB 2dsphere indexing.
             </p>
 
-            {/* Primary CTA Button (Matches mockup) */}
             <button
               onClick={handleSubmit}
+              disabled={loading}
               className="neo-btn neo-btn-dark"
               style={{
                 width: '100%',
@@ -311,26 +360,15 @@ export default function CreateDonationPage({ onNavigate, onDonationCreated }) {
                 boxShadow: 'var(--shadow-neo)'
               }}
             >
-              <span>Post Donation</span>
-              <ArrowRight size={20} />
+              {loading ? (
+                <Loader2 size={20} className="animate-spin" />
+              ) : (
+                <>
+                  <span>Post Donation</span>
+                  <ArrowRight size={20} />
+                </>
+              )}
             </button>
-          </div>
-
-          {/* Rescue Flow Reminder Card */}
-          <div className="neo-card" style={{ padding: '20px', background: '#ffffff' }}>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <div style={{ color: '#2a9d8f' }}>
-                <Check size={20} strokeWidth={3} />
-              </div>
-              <div>
-                <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-dark)', marginBottom: '4px' }}>
-                  Automatic Driver Dispatch
-                </h4>
-                <p style={{ fontSize: '0.82rem', color: 'var(--color-muted)', lineHeight: 1.4 }}>
-                  As soon as the recipient shelter confirms acceptance, the nearest volunteer driver will be routed to your pickup location.
-                </p>
-              </div>
-            </div>
           </div>
         </div>
       </div>

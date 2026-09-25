@@ -1,17 +1,198 @@
-import React, { useState } from 'react';
-import { HeartHandshake, MapPin, Building2, Store, Truck, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { 
+  HeartHandshake, 
+  MapPin, 
+  Building2, 
+  Store, 
+  Truck, 
+  ArrowRight, 
+  Loader2, 
+  Crosshair,
+  CheckCircle2,
+  Edit2,
+  AlertTriangle,
+  Search,
+  Map,
+  X
+} from 'lucide-react';
+import { api } from '../services/api';
+import { requestCurrentPosition, formatCoordinates } from '../services/locationService';
+import ShelterLocationPicker from '../components/ui/ShelterLocationPicker';
 
-export default function SignupPage({ onNavigate, onLogin }) {
-  const [orgName, setOrgName] = useState('ABC Restaurant & Catering');
-  const [email, setEmail] = useState('partner@abcrestaurant.in');
-  const [password, setPassword] = useState('••••••••');
-  const [location, setLocation] = useState('Connaught Place, New Delhi');
-  const [role, setRole] = useState('donor'); // donor, shelter, driver
+export default function SignupPage({ onNavigate, onLoginSuccess }) {
+  const [role, setRole] = useState('shelter');
+  const [orgName, setOrgName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  
+  // Location state - NEVER default coordinates
+  const [location, setLocation] = useState('');
+  const [coords, setCoords] = useState(null); // [lng, lat]
+  const [isConfirmed, setIsConfirmed] = useState(false);
+  const [isEditingLocation, setIsEditingLocation] = useState(true);
 
-  const handleSubmit = (e) => {
+  // Proximity-based search state
+  const [userNearbyCoords, setUserNearbyCoords] = useState(null);
+  const [donorSuggestions, setDonorSuggestions] = useState([]);
+  const [isDonorSearching, setIsDonorSearching] = useState(false);
+  const [showDonorMapPicker, setShowDonorMapPicker] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+  const [locLoading, setLocLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [locStatus, setLocStatus] = useState('');
+
+  // 1. Silently get approximate user coords on mount for nearby search bias
+  useEffect(() => {
+    if (navigator?.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserNearbyCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        (err) => {
+          console.log('[Proximity detection notice]', err.message);
+        },
+        { timeout: 5000, enableHighAccuracy: false }
+      );
+    }
+  }, []);
+
+  // 2. Real-time autocomplete suggestions as user types in Donor/Driver location
+  useEffect(() => {
+    if (role === 'shelter' || showDonorMapPicker) return;
+    if (!location || location.trim().length < 2) {
+      setDonorSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsDonorSearching(true);
+      try {
+        const res = await api.locations.search(
+          location.trim(),
+          userNearbyCoords?.lat,
+          userNearbyCoords?.lng
+        );
+        if (res?.results && res.results.length > 0) {
+          setDonorSuggestions(res.results);
+        } else {
+          setDonorSuggestions([]);
+        }
+      } catch (err) {
+        console.warn('[Location search notice]', err.message);
+      } finally {
+        setIsDonorSearching(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [location, role, showDonorMapPicker, userNearbyCoords]);
+
+  // Handle selecting a place suggestion from dropdown
+  const handleSelectDonorSuggestion = (place) => {
+    setLocation(place.address || place.name);
+    setCoords([place.lng, place.lat]);
+    setDonorSuggestions([]);
+    setLocStatus(`Location verified: ${place.name} (${place.lat.toFixed(4)}, ${place.lng.toFixed(4)})`);
+    setError('');
+  };
+
+  // Handle Shelter Location Confirmed from Map Picker
+  const handleShelterLocationConfirmed = (locData) => {
+    setCoords(locData.coordinates);
+    setLocation(locData.address);
+    setIsConfirmed(true);
+    setIsEditingLocation(false);
+    setError('');
+  };
+
+  // Device GPS for Donor / Driver only if clicked explicitly
+  const handleDetectLocation = async () => {
+    setLocLoading(true);
+    setLocStatus('Detecting device GPS...');
+    try {
+      const pos = await requestCurrentPosition();
+      setCoords([pos.longitude, pos.latitude]);
+      setUserNearbyCoords({ lat: pos.latitude, lng: pos.longitude });
+      setLocStatus(`GPS acquired (${pos.latitude.toFixed(4)}, ${pos.longitude.toFixed(4)})`);
+      
+      // Reverse geocode to get real street address
+      try {
+        const rev = await api.locations.reverse(pos.latitude, pos.longitude);
+        setLocation(rev.address || `GPS: ${pos.latitude.toFixed(4)}°N, ${pos.longitude.toFixed(4)}°E`);
+      } catch {
+        setLocation(`GPS: ${pos.latitude.toFixed(4)}°N, ${pos.longitude.toFixed(4)}°E`);
+      }
+    } catch (err) {
+      setLocStatus(`GPS notice: ${err.message}`);
+    } finally {
+      setLocLoading(false);
+    }
+  };
+
+  const handleRoleChange = (newRole) => {
+    setRole(newRole);
+    setCoords(null);
+    setLocation('');
+    setIsConfirmed(false);
+    setIsEditingLocation(true);
+    setDonorSuggestions([]);
+    setShowDonorMapPicker(false);
+    setError('');
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (onLogin) onLogin();
-    onNavigate('donor-dashboard');
+    setError('');
+
+    // Strict validation for shelter role: Location MUST be explicitly confirmed on map
+    if (role === 'shelter') {
+      if (!coords || coords.length !== 2 || !isConfirmed) {
+        setError('Please select and confirm your shelter location on the map before continuing.');
+        return;
+      }
+    } else {
+      // For donor: Must specify location
+      if (!location.trim()) {
+        setError('Please enter or select your location address.');
+        return;
+      }
+    }
+
+    setLoading(true);
+
+    try {
+      const payload = {
+        name: orgName,
+        email,
+        password,
+        role: role.toUpperCase(),
+        ...(coords && coords.length === 2 ? {
+          location: {
+            type: 'Point',
+            coordinates: coords,
+            address: location || 'Registered Location'
+          }
+        } : (location ? {
+          location: {
+            address: location
+          }
+        } : {}))
+      };
+
+      const res = await api.auth.register(payload);
+      if (onLoginSuccess && res?.user) {
+        onLoginSuccess(res.user);
+      } else {
+        if (role === 'donor') onNavigate('/donor/dashboard');
+        else if (role === 'shelter') onNavigate('/shelter/dashboard');
+        else if (role === 'driver') onNavigate('/driver/dashboard');
+      }
+    } catch (err) {
+      setError(err.message || 'Registration failed.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -22,7 +203,7 @@ export default function SignupPage({ onNavigate, onLogin }) {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '32px 24px'
+      padding: '32px 20px'
     }}>
       {/* Brand Header */}
       <div 
@@ -65,9 +246,10 @@ export default function SignupPage({ onNavigate, onLogin }) {
         className="neo-card" 
         style={{
           width: '100%',
-          maxWidth: '540px',
+          maxWidth: (role === 'shelter' || showDonorMapPicker) ? '760px' : '580px',
           padding: '36px 32px',
-          background: '#ffffff'
+          background: '#ffffff',
+          transition: 'max-width 0.2s ease'
         }}
       >
         <h2 style={{
@@ -77,111 +259,46 @@ export default function SignupPage({ onNavigate, onLogin }) {
           color: 'var(--color-dark)',
           marginBottom: '6px'
         }}>
-          Create Account
+          Create Your Account
         </h2>
         <p style={{
           color: 'var(--color-muted)',
-          fontSize: '0.95rem',
-          marginBottom: '24px'
+          fontSize: '0.92rem',
+          marginBottom: '20px'
         }}>
-          Join the food rescue network. Connect surplus with those who need it.
+          Join the food rescue network with real database registration.
         </p>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '6px' }}>
-                Organization Name
-              </label>
-              <input
-                type="text"
-                required
-                className="neo-input"
-                placeholder="Your organization name"
-                value={orgName}
-                onChange={(e) => setOrgName(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '6px' }}>
-                Email
-              </label>
-              <input
-                type="email"
-                required
-                className="neo-input"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
+        {error && (
+          <div style={{
+            background: '#ffe5e5',
+            color: '#b00020',
+            border: '2px solid #b00020',
+            borderRadius: '8px',
+            padding: '12px 16px',
+            fontSize: '0.88rem',
+            fontWeight: 700,
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <AlertTriangle size={18} />
+            <span>{error}</span>
           </div>
+        )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '6px' }}>
-                Password
-              </label>
-              <input
-                type="password"
-                required
-                className="neo-input"
-                placeholder="Create password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '6px' }}>
-                Location
-              </label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type="text"
-                  required
-                  className="neo-input"
-                  placeholder="Search your location"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  style={{ paddingLeft: '36px' }}
-                />
-                <MapPin size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-muted)' }} />
-              </div>
-            </div>
-          </div>
-
-          {/* Role Selection (Matches Screenshot) */}
-          <div style={{ marginTop: '8px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* 1. Role Selection */}
+          <div>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, marginBottom: '8px' }}>
-              I am a
+              1. Select Your Role
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-              {/* Donor */}
               <div
-                onClick={() => setRole('donor')}
+                onClick={() => handleRoleChange('shelter')}
                 style={{
-                  padding: '12px 10px',
-                  borderRadius: '10px',
-                  border: 'var(--border-dark)',
-                  background: role === 'donor' ? 'var(--color-primary)' : 'var(--color-bg)',
-                  color: role === 'donor' ? '#ffffff' : 'var(--color-dark)',
-                  boxShadow: role === 'donor' ? 'var(--shadow-neo-sm)' : 'none',
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>Donor</div>
-                <div style={{ fontSize: '0.72rem', opacity: role === 'donor' ? 0.9 : 0.65, marginTop: '2px' }}>Restaurant / Store</div>
-              </div>
-
-              {/* Shelter */}
-              <div
-                onClick={() => setRole('shelter')}
-                style={{
-                  padding: '12px 10px',
+                  padding: '14px 10px',
                   borderRadius: '10px',
                   border: 'var(--border-dark)',
                   background: role === 'shelter' ? 'var(--color-primary)' : 'var(--color-bg)',
@@ -192,15 +309,34 @@ export default function SignupPage({ onNavigate, onLogin }) {
                   transition: 'all 0.15s ease'
                 }}
               >
-                <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>Shelter</div>
-                <div style={{ fontSize: '0.72rem', opacity: role === 'shelter' ? 0.9 : 0.65, marginTop: '2px' }}>NGO / Shelter</div>
+                <Building2 size={22} style={{ margin: '0 auto 4px' }} />
+                <div style={{ fontWeight: 800, fontSize: '0.92rem' }}>Shelter</div>
+                <div style={{ fontSize: '0.72rem', opacity: role === 'shelter' ? 0.95 : 0.65 }}>NGO / Recipient</div>
               </div>
 
-              {/* Driver */}
               <div
-                onClick={() => setRole('driver')}
+                onClick={() => handleRoleChange('donor')}
                 style={{
-                  padding: '12px 10px',
+                  padding: '14px 10px',
+                  borderRadius: '10px',
+                  border: 'var(--border-dark)',
+                  background: role === 'donor' ? 'var(--color-primary)' : 'var(--color-bg)',
+                  color: role === 'donor' ? '#ffffff' : 'var(--color-dark)',
+                  boxShadow: role === 'donor' ? 'var(--shadow-neo-sm)' : 'none',
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <Store size={22} style={{ margin: '0 auto 4px' }} />
+                <div style={{ fontWeight: 800, fontSize: '0.92rem' }}>Donor</div>
+                <div style={{ fontSize: '0.72rem', opacity: role === 'donor' ? 0.95 : 0.65 }}>Restaurant / Grocery</div>
+              </div>
+
+              <div
+                onClick={() => handleRoleChange('driver')}
+                style={{
+                  padding: '14px 10px',
                   borderRadius: '10px',
                   border: 'var(--border-dark)',
                   background: role === 'driver' ? 'var(--color-primary)' : 'var(--color-bg)',
@@ -211,34 +347,387 @@ export default function SignupPage({ onNavigate, onLogin }) {
                   transition: 'all 0.15s ease'
                 }}
               >
-                <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>Driver</div>
-                <div style={{ fontSize: '0.72rem', opacity: role === 'driver' ? 0.9 : 0.65, marginTop: '2px' }}>Volunteer Driver</div>
+                <Truck size={22} style={{ margin: '0 auto 4px' }} />
+                <div style={{ fontWeight: 800, fontSize: '0.92rem' }}>Driver</div>
+                <div style={{ fontSize: '0.72rem', opacity: role === 'driver' ? 0.95 : 0.65 }}>Volunteer Delivery</div>
               </div>
             </div>
-            {role !== 'donor' && (
-              <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginTop: '6px' }}>
-                Note: Member 2 is implementing Shelter & Driver interfaces. You will be directed to the Donor experience for this demo.
-              </p>
-            )}
           </div>
 
+          {/* 2. Organization / User Info */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, marginBottom: '8px' }}>
+              2. Account Details
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '4px' }}>
+                  {role === 'shelter' ? 'Shelter Organization Name' : role === 'donor' ? 'Donor / Restaurant Name' : 'Driver Full Name'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  className="neo-input"
+                  placeholder={role === 'shelter' ? 'e.g. Hope Community Shelter' : role === 'donor' ? 'e.g. Downtown Bistro' : 'e.g. Rahul Sharma'}
+                  value={orgName}
+                  onChange={(e) => setOrgName(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '4px' }}>
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  required
+                  className="neo-input"
+                  placeholder="contact@organization.org"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '4px' }}>
+                  Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  className="neo-input"
+                  placeholder="Create secure password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 3. SHELTER LOCATION SECTION (Mandatory Map Selection Flow) */}
+          {role === 'shelter' ? (
+            <div style={{
+              background: '#fafafa',
+              border: '2px solid var(--color-dark)',
+              borderRadius: '12px',
+              padding: '20px',
+              marginTop: '4px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                <div>
+                  <h3 style={{
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    fontSize: '1.15rem',
+                    fontWeight: 800,
+                    margin: 0,
+                    color: 'var(--color-dark)'
+                  }}>
+                    3. Shelter Location (Required)
+                  </h3>
+                  <p style={{ margin: '3px 0 0', fontSize: '0.8rem', color: 'var(--color-muted)' }}>
+                    Type your shelter name/address to see nearby suggestions or click & drag pin on the map.
+                  </p>
+                </div>
+
+                {isConfirmed && !isEditingLocation && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingLocation(true)}
+                    className="neo-btn neo-btn-outline"
+                    style={{ padding: '6px 12px', fontSize: '0.78rem', background: '#ffffff' }}
+                  >
+                    <Edit2 size={13} />
+                    <span>Edit Location</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Confirmed State Summary */}
+              {isConfirmed && !isEditingLocation ? (
+                <div style={{
+                  background: '#d8f3dc',
+                  border: '2px solid #1b4332',
+                  borderRadius: '10px',
+                  padding: '16px 20px',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: '12px'
+                }}>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <CheckCircle2 size={24} color="#1b4332" style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <div>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#1b4332', textTransform: 'uppercase' }}>
+                        Selected Shelter Location Confirmed
+                      </div>
+                      <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-dark)', marginTop: '2px' }}>
+                        {location}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: '#2d6a4f', marginTop: '4px', fontWeight: 600 }}>
+                        Latitude: <strong>{coords[1].toFixed(5)}</strong> • Longitude: <strong>{coords[0].toFixed(5)}</strong> ({formatCoordinates(coords[1], coords[0])})
+                      </div>
+                    </div>
+                  </div>
+
+                  <span className="neo-badge neo-badge-matched" style={{ background: '#1b4332', color: '#ffffff', fontSize: '0.72rem' }}>
+                    CONFIRMED
+                  </span>
+                </div>
+              ) : (
+                /* Interactive Map & Search Picker with Nearby Bias */
+                <ShelterLocationPicker
+                  initialLocation={coords ? { coordinates: coords, address: location } : null}
+                  nearbyCoords={userNearbyCoords}
+                  onLocationConfirmed={handleShelterLocationConfirmed}
+                  confirmButtonText="Confirm Location"
+                />
+              )}
+            </div>
+          ) : (
+            /* DONOR & DRIVER LOCATION WITH LIVE NEARBY AUTOCOMPLETE SUGGESTIONS */
+            <div style={{
+              background: '#fafafa',
+              border: '2px solid var(--color-dark)',
+              borderRadius: '12px',
+              padding: '18px',
+              marginTop: '4px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div>
+                  <label style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-dark)' }}>
+                    3. {role === 'donor' ? 'Donation Pickup Location' : 'Base Service Area'}
+                  </label>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--color-muted)' }}>
+                    Type your address or landmark — suggestions are prioritized for your area.
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowDonorMapPicker(!showDonorMapPicker)}
+                    className="neo-btn neo-btn-outline"
+                    style={{
+                      background: showDonorMapPicker ? 'var(--color-dark)' : '#ffffff',
+                      color: showDonorMapPicker ? '#ffffff' : 'var(--color-dark)',
+                      fontSize: '0.78rem',
+                      padding: '5px 10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                    title="Toggle Map Picker"
+                  >
+                    <Map size={13} />
+                    <span>{showDonorMapPicker ? 'Close Map' : 'Pick on Map'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDetectLocation}
+                    disabled={locLoading}
+                    className="neo-btn neo-btn-outline"
+                    style={{
+                      background: '#ffffff',
+                      fontSize: '0.78rem',
+                      padding: '5px 10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                    title="Use Device GPS"
+                  >
+                    {locLoading ? <Loader2 size={13} className="anim-spin" /> : <Crosshair size={13} />}
+                    <span>Use My GPS</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Optional Interactive Map Picker for Donor */}
+              {showDonorMapPicker ? (
+                <div style={{ marginTop: '12px' }}>
+                  <ShelterLocationPicker
+                    initialLocation={coords ? { coordinates: coords, address: location } : null}
+                    nearbyCoords={userNearbyCoords}
+                    onLocationConfirmed={(locData) => {
+                      setCoords(locData.coordinates);
+                      setLocation(locData.address);
+                      setShowDonorMapPicker(false);
+                      setLocStatus(`Location confirmed: ${locData.address}`);
+                    }}
+                    onCancel={() => setShowDonorMapPicker(false)}
+                    confirmButtonText="Confirm Pickup Location"
+                  />
+                </div>
+              ) : (
+                /* Live Autocomplete Input */
+                <div style={{ position: 'relative', marginTop: '10px' }}>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="text"
+                      required
+                      className="neo-input"
+                      placeholder={role === 'donor' ? 'Type restaurant/store address, sector or landmark...' : 'Type your delivery hub or base city...'}
+                      value={location}
+                      onChange={(e) => {
+                        setLocation(e.target.value);
+                        setCoords(null); // reset coords until suggestion chosen
+                      }}
+                      style={{ paddingLeft: '38px', paddingRight: '36px', width: '100%', fontSize: '0.92rem' }}
+                    />
+                    <Search 
+                      size={18} 
+                      style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-muted)' }} 
+                    />
+                    {isDonorSearching && (
+                      <Loader2 
+                        size={16} 
+                        className="anim-spin" 
+                        style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-primary)' }} 
+                      />
+                    )}
+                    {location && !isDonorSearching && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLocation('');
+                          setCoords(null);
+                          setDonorSuggestions([]);
+                        }}
+                        style={{
+                          position: 'absolute',
+                          right: '12px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontWeight: 800
+                        }}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Suggestions List Box */}
+                  {donorSuggestions.length > 0 && (
+                    <div 
+                      className="neo-card"
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        background: '#ffffff',
+                        border: '2px solid var(--color-dark)',
+                        borderRadius: '8px',
+                        boxShadow: 'var(--shadow-neo)',
+                        maxHeight: '230px',
+                        overflowY: 'auto',
+                        zIndex: 1200,
+                        marginTop: '4px',
+                        padding: '6px'
+                      }}
+                    >
+                      <div style={{ padding: '4px 10px', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-muted)', borderBottom: '1px solid #f0f0f0' }}>
+                        📍 Nearby Location Suggestions:
+                      </div>
+                      {donorSuggestions.map((place, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => handleSelectDonorSuggestion(place)}
+                          style={{
+                            padding: '10px 12px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '10px',
+                            borderBottom: idx < donorSuggestions.length - 1 ? '1px solid #f5f5f5' : 'none',
+                            transition: 'background 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-bg)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <MapPin size={17} color="var(--color-primary)" style={{ marginTop: '2px', flexShrink: 0 }} />
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--color-dark)' }}>
+                              {place.name}
+                            </div>
+                            <div style={{ fontSize: '0.76rem', color: 'var(--color-muted)', marginTop: '1px' }}>
+                              {place.address}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Confirmed / Selected Pill */}
+                  {coords && coords.length === 2 && (
+                    <div style={{
+                      marginTop: '8px',
+                      background: '#d8f3dc',
+                      border: '1.5px solid #1b4332',
+                      borderRadius: '6px',
+                      padding: '8px 12px',
+                      fontSize: '0.78rem',
+                      color: '#1b4332',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      <CheckCircle2 size={16} />
+                      <span>Verified GPS: <strong>{coords[1].toFixed(5)}, {coords[0].toFixed(5)}</strong> ({location})</span>
+                    </div>
+                  )}
+
+                  {locStatus && !coords && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, display: 'block', marginTop: '6px' }}>
+                      {locStatus}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Submit Button */}
           <button
             type="submit"
+            disabled={loading || (role === 'shelter' && (!isConfirmed || !coords))}
             className="neo-btn neo-btn-dark"
-            style={{ width: '100%', padding: '14px', marginTop: '12px', fontSize: '1rem' }}
+            style={{ 
+              width: '100%', 
+              padding: '14px', 
+              marginTop: '6px', 
+              fontSize: '1rem',
+              opacity: (role === 'shelter' && (!isConfirmed || !coords)) ? 0.6 : 1,
+              cursor: (role === 'shelter' && (!isConfirmed || !coords)) ? 'not-allowed' : 'pointer'
+            }}
           >
-            <span>Create Account</span>
-            <ArrowRight size={18} />
+            {loading ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : role === 'shelter' && (!isConfirmed || !coords) ? (
+              <span>Confirm Shelter Location Above to Continue</span>
+            ) : (
+              <>
+                <span>Complete Registration</span>
+                <ArrowRight size={18} />
+              </>
+            )}
           </button>
         </form>
 
-        <div style={{ textAlign: 'center', fontSize: '0.9rem', marginTop: '20px' }}>
-          <span style={{ color: 'var(--color-muted)' }}>Already have an account? </span>
+        <div style={{ textAlign: 'center', fontSize: '0.9rem', marginTop: '22px' }}>
+          <span style={{ color: 'var(--color-muted)' }}>Already registered? </span>
           <span 
             onClick={() => onNavigate('login')}
             style={{ fontWeight: 800, color: 'var(--color-dark)', cursor: 'pointer', textDecoration: 'underline' }}
           >
-            Log in
+            Log in to your portal
           </span>
         </div>
       </div>
